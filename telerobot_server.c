@@ -53,7 +53,7 @@ GError *sockerror;
 
 int comport_relayboard = 16;
 int comport_sk = 17;
-
+char mode[]={'8','N','2'};
 /* serwokontroler i regulator są na początku działania programu domyślnie włączone */
 gboolean stan_serwokontroler = TRUE;
 gboolean stan_regulator = TRUE;
@@ -70,7 +70,7 @@ void relay_switch(char stan, int numer) {
 		uint8_t crctab[] = { 0x01, stan, numer };
 		uint8_t crc = CountCRC(0x00, crctab, 3);
 		uint8_t buff[] = { 0x55, 0x01, stan, numer, crc };
-		SendBuf(comport_relayboard, buff, 5);
+		RS232_SendBuf(comport_relayboard, buff, 5);
 	}
 }
 
@@ -79,7 +79,7 @@ void wychyl_x(int wychylenie_x) {
 	/* printf("synchronizacja:%4hd, number:%4hd, posHigh:%4hd, posLow/speed:%4hd\n", packet[0],packet[1],packet[2],packet[3]); */
 	if (access(comports[comport_sk], F_OK) == 0) {
 		CalculatePacket(1, wychylenie_x, 8);
-		SendBuf(comport_sk, packet, 4);
+		RS232_SendBuf(comport_sk, packet, 4);
 	}
 }
 
@@ -169,7 +169,7 @@ int pwm_send() {
 
 		if (access(comports[comport_sk], F_OK) == 0) {
 			CalculatePacket(3, predkosc, 4);
-			SendBuf(comport_sk, packet, 4);
+			RS232_SendBuf(comport_sk, packet, 4);
 		}
 		/* printf("synchronizacja:%4hd, number:%4hd, posHigh:%4hd, posLow/speed:%4hd\n", packet[0],packet[1],packet[2],packet[3]); */
 	}
@@ -235,7 +235,7 @@ void zinterpretuj_dwustan(unsigned char buffer[1024]) {
 		relay_switch('F', 0x00);
 		printf("◅ ▻ Zasilanie serwokontrolera wyłączone.\n");
 		/* zamyka port szeregowy serwokontrolera */
-		CloseComport(comport_sk);
+		RS232_CloseComport(comport_sk);
 		printf("Port serwokontrolera zamknięty.\n");
 	}
 
@@ -245,13 +245,13 @@ void zinterpretuj_dwustan(unsigned char buffer[1024]) {
 		relay_switch('O', 0x00);
 		printf("◄ ► Zasilanie serwokontrolera załączone.\n");
 		/* otwiera port szeregowy serwokontrolera */
-		OpenComport(comport_sk, 9600);
+		RS232_OpenComport(comport_sk, 9600, mode);
 		printf("port szeregowy serwokontrolera %s numer %2hd\n",
 				comports[comport_sk], comport_sk);
 		/* ustawia koła w pozycji środkowej */
 		if (access(comports[comport_sk], F_OK) == 0) {
 			CalculatePacket(1, 500, 4);
-			SendBuf(comport_sk, packet, 4);
+			RS232_SendBuf(comport_sk, packet, 4);
 		}
 		printf("Koła ustawione w pozycji środkowej.\n");
 	}
@@ -314,7 +314,7 @@ void zdarzenie() {
 			/*
 			 if (access(comports[comport_sk], F_OK) == 0)
 			 {CalculatePacket(3, predkosc, 4);
-			 SendBuf(comport_sk, packet, 4);}
+			 RS232_SendBuf(comport_sk, packet, 4);}
 			 */
 		}
 	}
@@ -374,14 +374,15 @@ void otworz_urzadzenia() {
 			readbuf[4] = 0;
 
 			/* sprawdza czy urządzenie jest kartą przekaźników */
-			OpenComport(nr_portu, 57600);
+			//TODO: not sure if mode for relay board is the same as for servo controller
+			RS232_OpenComport(nr_portu, 57600, mode);
 			/* wysyła polecenie Get */
 			/*	uint8_t crctab[] = {0x01, 'G', 0x01};
 			 uint8_t crc = CountCRC(0x00, crctab,3);
 			 uint8_t buff[] = {0x55, crctab[0], crctab[1], crctab[2], crc};
 			 */
 			uint8_t buff[] = { 0x55, 0x01, 0x47, 0x00, 0x5e };
-			SendBuf(nr_portu, buff, 5);
+			RS232_SendBuf(nr_portu, buff, 5);
 
 			/* czeka dwie sekundy na odpowiedź karty przekaźników */
 			usleep(20000);
@@ -406,7 +407,7 @@ void otworz_urzadzenia() {
 				printf("kontroler serwomechanizmów\n");
 				comport_sk = nr_portu;
 				/* otwiera port szeregowy serwokontrolera */
-				OpenComport(comport_sk, 9600);
+				RS232_OpenComport(comport_sk, 9600, mode);
 			}
 		}
 	}
