@@ -21,8 +21,8 @@ GstStateChangeReturn ret;
 GstElement *pipeline;
 GstElement *v4l2src, *encoder, *udp_sink;
 GMainLoop *loop;
-gboolean virgin_video = TRUE;
-gboolean virgin_audio = TRUE;
+gboolean first_time_video = TRUE;
+gboolean first_time_audio = TRUE;
 /* polecenie bash do nadawania obrazu i dźwięku:
 gst-launch v4l2src ! queue ! video/x-raw-yuv,width=320,height=240,framerate=15/1 ! videorate ! videoscale ! ffmpegcolorspace ! queue ! smokeenc ! queue ! udpsink host=127.0.0.1 port=5000
 alsasrc ! queue ! audio/x-raw-int,rate=8000,channels=1,depth=8 ! audioconvert ! speexenc ! queue ! tcpserversink host=127.0.0.1 port=5001 */
@@ -31,7 +31,7 @@ int video_start() {
 	char v4l_device_path[11];
 	/* "/dev/videoX" is 11 characters long */
 
-	if (virgin_video = TRUE) {
+	if (first_time_video) {
 		/* ta część jest wykonywana tylko przy pierwszym uruchomieniu nadawania obrazu */
 		v4l2src = gst_element_factory_make("v4l2src", "video4linux-source");
 		/* tworzy źródło obrazu */
@@ -81,7 +81,7 @@ int video_start() {
 		} else {
 			g_print("GO: Linked encoder with udp_sink.\n");
 		}
-		virgin_video = FALSE;
+		first_time_video = FALSE;
 	}
 
 	g_object_set(G_OBJECT(udp_sink), "port", 5000, NULL);
@@ -103,7 +103,7 @@ GstElement *pipeline_audio;
 GstElement *alsasrc, *converter, *speexenc, *tcpserversink;
 
 int audio_start() {
-	if (virgin_audio = TRUE) {
+	if (first_time_audio) {
 		/* ta część jest wykonywana tylko przy pierwszym uruchomieniu nadawania dźwięku */
 		pipeline_audio = gst_pipeline_new("pipeline-audio");
 		alsasrc = gst_element_factory_make("alsasrc", "alsa-source");
@@ -147,7 +147,7 @@ int audio_start() {
 		} else {
 			g_print("GO: Linked speexenc with tcpserversink.\n");
 		}
-		virgin_video = FALSE;
+		first_time_audio = FALSE;
 	}
 
 	g_object_set(G_OBJECT(tcpserversink), "host", nadajnik_IP_string, NULL);
